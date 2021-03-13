@@ -27,6 +27,10 @@ func main() {
 	if output_path == "" {
 		throwerr("No output path defined: %v", err)
 	}
+	// append slash if necessary
+	if !strings.HasSuffix(output_path, "/") {
+		output_path += "/"
+	}
 	fmt.Printf("Output path defined: %s\n", output_path) //DEBUG
 	// TODO: validate output path
 
@@ -83,9 +87,9 @@ func main() {
 
 							// TODO BROKEN
 							outf_md5 := md5.Sum([]byte(media_url))
-							fmt.Printf("md5 is: %s\n", outf_md5)
-							outf_name := string(outf_md5[:]) + ".mp3"
-							fmt.Printf("outf is: %s\n", outf_name)
+							fmt.Printf("md5 is: %x\n", outf_md5) //DEBUG
+							outf_name := output_path + fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
+							fmt.Printf("outf is: %s\n", outf_name) //DEBUG
 
 							// TODO: check if file already exists in our output_path
 							// TODO: download to tmpfile and...
@@ -94,7 +98,7 @@ func main() {
 						}
 
 						// write line into feed tmp outfile
-						tmp_outfile.WriteString(line)
+						tmp_outfile.WriteString(line + "\n")
 					}
 					// close tmp outfile
 					tmp_outfile.Close()
