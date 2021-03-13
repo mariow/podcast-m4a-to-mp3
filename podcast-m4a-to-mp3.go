@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"gopkg.in/ini.v1"
@@ -44,7 +47,7 @@ func main() {
 
 				//TODO: validate URL
 
-				// download to tmpfile
+				// prepare tmpfile for feed download
 				tmpfile, err := ioutil.TempFile("", "pm4a2mp3-")
 				if err != nil {
 					throwerr("error creating tmpfile: %v", err)
@@ -53,23 +56,53 @@ func main() {
 				fmt.Printf("we have a tmpfile: %s\n", tmpfile.Name()) //DEBUG
 
 				// download feed
+				media_url := ""
 				err = DownloadFile(tmpfile.Name(), url)
 				if err != nil {
 					complain("error downloading feed: %v", err)
 				} else {
-					// parse feed
+					// prepare tmpfile for rewritten feed
+					tmp_outfile, err := ioutil.TempFile("", "pm4a2mp3-new-")
+					if err != nil {
+						throwerr("error creating tmpfile 2: %v", err)
+					}
+					//TODO  defer os.Remove(tmp_outfile.Name()) // clean up later
+
+					// compile regexp (TODO: not the best place)
+					r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
+
+					// parse Embedded Media from feed and rewrite
+					s := bufio.NewScanner(tmpfile)
+					for s.Scan() {
+						line := s.Text()
+						//fmt.Println(line) //DEBUG
+						matchs := r.FindStringSubmatch(line)
+						if len(matchs) > 1 {
+							fmt.Println(matchs[1]) //DEBUG
+							media_url = matchs[1]
+
+							// TODO BROKEN
+							outf_md5 := md5.Sum([]byte(media_url))
+							fmt.Printf("md5 is: %s\n", outf_md5)
+							outf_name := string(outf_md5[:]) + ".mp3"
+							fmt.Printf("outf is: %s\n", outf_name)
+
+							// TODO: check if file already exists in our output_path
+							// TODO: download to tmpfile and...
+							// TODO: convert m4a to mp3	(in output_path)
+							// TODO: save updated rss
+						}
+
+						// write line into feed tmp outfile
+						tmp_outfile.WriteString(line)
+					}
+					// close tmp outfile
+					tmp_outfile.Close()
 				}
 
 			}
 		}
 	}
-
-	// TODO: parse Embedded Media from feed
-	// TODO: skip if the file is not m4a
-	// TODO: check if file already exists in our output_path
-	// TODO: download to tmpfile and...
-	// TODO: convert m4a to mp3	(in output_path)
-	// TODO: write updated rss
 
 	//	keys := cfg.Section(sec).KeyStrings()
 	//	for _, key := range keys {
