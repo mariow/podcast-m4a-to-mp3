@@ -11,10 +11,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/xfrr/goffmpeg/transcoder"
 	"gopkg.in/ini.v1"
 )
 
 var output_path string
+var output_url string
 
 func main() {
 	cfg, err := ini.Load("podcast-m4a-to-mp3.ini")
@@ -31,6 +33,13 @@ func main() {
 	if !strings.HasSuffix(output_path, "/") {
 		output_path += "/"
 	}
+
+	// init output url from .ini
+	output_url = cfg.Section("default").Key("output_url").String()
+	if output_url == "" {
+		throwerr("No output url defined: %v", err)
+	}
+
 	fmt.Printf("Output path defined: %s\n", output_path) //DEBUG
 	// TODO: validate output path
 
@@ -88,13 +97,51 @@ func main() {
 							// TODO BROKEN
 							outf_md5 := md5.Sum([]byte(media_url))
 							fmt.Printf("md5 is: %x\n", outf_md5) //DEBUG
-							outf_name := output_path + fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
+							outf_name := fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
+							outf_fname := output_path + outf_name
 							fmt.Printf("outf is: %s\n", outf_name) //DEBUG
 
-							// TODO: check if file already exists in our output_path
-							// TODO: download to tmpfile and...
-							// TODO: convert m4a to mp3	(in output_path)
-							// TODO: save updated rss
+							// check if file already exists in our output_path
+							// TODO: we should still rewrite the feed, even if the file already exists
+							if !fileExists(outf_name) {
+								tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
+								if err != nil {
+									throwerr("error creating tmpfile 3: %v", err)
+								}
+								//DEBUG defer os.Remove(tmp_download.Name())
+
+								//download to tmpfile and
+								err = DownloadFile(tmp_download.Name(), media_url)
+								if err != nil {
+									complain("error downloading media: %v", err)
+								} else {
+									//DEBUG defer os.Remove(tmpfile.Name()) //cleanup tmpfile
+									// successful download, let's convert to mp3
+									// ffmpeg -i bits-2021-02-21-3mslDxiZ.m4a -c:a libmp3lame -q:a 4 bits.mp3
+
+									fmt.Println("Download done, starting transcoding") //DEBUG
+									trans := new(transcoder.Transcoder)
+									err := trans.Initialize(tmp_download.Name(), outf_fname)
+									trans.MediaFile().SetSkipVideo(true)
+
+									if err != nil {
+										complain("error transcoding: %v", err)
+									}
+									done := trans.Run(false)
+									err = <-done
+
+									if err != nil {
+										complain("error transcoding 2: %v", err)
+										os.Remove(outf_fname) // cleanup broken output file
+									} else {
+										// TODO replace enclosure in output feed
+										line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
+									}
+								}
+
+							} else { //DEBUG
+								fmt.Println("outf already exists") // DEBUG
+							} //DEBUG
 						}
 
 						// write line into feed tmp outfile
@@ -102,6 +149,9 @@ func main() {
 					}
 					// close tmp outfile
 					tmp_outfile.Close()
+
+					// save updated rss
+					copyFile(tmp_outfile.Name(), output_path+"feed.rss")
 				}
 
 			}
@@ -144,4 +194,39 @@ func DownloadFile(filepath string, url string) error {
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+// Thanks: https://golangcode.com/check-if-a-file-exists/
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
+// Thanks: https://opensource.com/article/18/6/copying-files-go
+func copyFile(src, dst string) (int64, error) {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return 0, err
+	}
+
+	if !sourceFileStat.Mode().IsRegular() {
+		return 0, fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return 0, err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return 0, err
+	}
+	defer destination.Close()
+	nBytes, err := io.Copy(destination, source)
+	return nBytes, err
 }
