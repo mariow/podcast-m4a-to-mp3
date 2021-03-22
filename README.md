@@ -1,5 +1,10 @@
 # podcast-m4a-to-mp3
 
+## HOWTO
+
+TODO: explain usage (downlaod dependencies, compile code, modify .ini, create cronjob)
+
+
 ## TODO
 
 - [x] subscribe to feed
