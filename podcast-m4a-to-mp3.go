@@ -133,15 +133,17 @@ func main() {
 									if err != nil {
 										complain("error transcoding 2: %v", err)
 										os.Remove(outf_fname) // cleanup broken output file
-									} else {
-										// TODO replace enclosure in output feed
-										line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
+										outf_name = ""        // empty outf_name will keep us from rewriting the output feed
 									}
 								}
-
 							} else { //DEBUG
 								fmt.Println("outf already exists") // DEBUG
 							} //DEBUG
+
+							// rewrite enclosure
+							if outf_name != "" {
+								line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
+							}
 						}
 
 						// write line into feed tmp outfile
