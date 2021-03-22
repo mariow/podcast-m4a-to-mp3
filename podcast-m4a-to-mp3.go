@@ -63,72 +63,72 @@ func main() {
 				err = downloadFile(tmpfile.Name(), url)
 				if err != nil {
 					complain("error downloading feed: %v", err)
-					continue
-				}
-				// prepare tmpfile for rewritten feed
-				tmp_outfile, err := ioutil.TempFile("", "pm4a2mp3-new-")
-				if err != nil {
-					throwerr("error creating tmpfile 2: %v", err)
-				}
-				defer os.Remove(tmp_outfile.Name()) // clean up later
+				} else {
+					// prepare tmpfile for rewritten feed
+					tmp_outfile, err := ioutil.TempFile("", "pm4a2mp3-new-")
+					if err != nil {
+						throwerr("error creating tmpfile 2: %v", err)
+					}
+					defer os.Remove(tmp_outfile.Name()) // clean up later
 
-				// compile regexp (TODO: not the best place)
-				r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
+					// compile regexp (TODO: not the best place)
+					r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
 
-				// parse Embedded Media from feed and rewrite
-				s := bufio.NewScanner(tmpfile)
-				for s.Scan() {
-					line := s.Text()
+					// parse Embedded Media from feed and rewrite
+					s := bufio.NewScanner(tmpfile)
+					for s.Scan() {
+						line := s.Text()
 
-					matchs := r.FindStringSubmatch(line)
-					if len(matchs) > 1 {
-						media_url = matchs[1]
+						matchs := r.FindStringSubmatch(line)
+						if len(matchs) > 1 {
+							media_url = matchs[1]
 
-						// md5 sum of the original url is our cache key and name for the new file
-						outf_md5 := md5.Sum([]byte(media_url))
-						outf_name := fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
-						outf_fname := output_path + outf_name
+							// md5 sum of the original url is our cache key and name for the new file
+							outf_md5 := md5.Sum([]byte(media_url))
+							outf_name := fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
+							outf_fname := output_path + outf_name
 
-						// check if file already exists in our output_path
-						if !fileExists(outf_fname) {
-							tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
-							if err != nil {
-								throwerr("error creating tmpfile 3: %v", err)
-							}
-							defer os.Remove(tmp_download.Name())
-
-							//download to tmpfile and
-							err = downloadFile(tmp_download.Name(), media_url)
-							if err != nil {
-								complain("error downloading media: %v", err)
-							} else {
-								defer os.Remove(tmpfile.Name()) //cleanup tmpfile
-								// successful download, let's convert to mp3
-								// ffmpeg -i bits-2021-02-21-3mslDxiZ.m4a -c:a libmp3lame -q:a 4 bits.mp3
-
-								err := transcodeFile(tmp_download.Name(), outf_name)
+							// check if file already exists in our output_path
+							if !fileExists(outf_fname) {
+								tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
 								if err != nil {
-									complain("error transcoding: %v", err)
-									os.Remove(outf_fname) // cleanup broken output file
-									outf_name = ""        // empty outf_name will keep us from rewriting the output feed
+									throwerr("error creating tmpfile 3: %v", err)
+								}
+								defer os.Remove(tmp_download.Name())
+
+								//download to tmpfile and
+								err = downloadFile(tmp_download.Name(), media_url)
+								if err != nil {
+									complain("error downloading media: %v", err)
+								} else {
+									defer os.Remove(tmpfile.Name()) //cleanup tmpfile
+									// successful download, let's convert to mp3
+									// ffmpeg -i bits-2021-02-21-3mslDxiZ.m4a -c:a libmp3lame -q:a 4 bits.mp3
+
+									err := transcodeFile(tmp_download.Name(), outf_name)
+									if err != nil {
+										complain("error transcoding: %v", err)
+										os.Remove(outf_fname) // cleanup broken output file
+										outf_name = ""        // empty outf_name will keep us from rewriting the output feed
+									}
 								}
 							}
+
+							// rewrite enclosure
+							if outf_name != "" {
+								line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
+							}
 						}
 
-						// rewrite enclosure
-						if outf_name != "" {
-							line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
-						}
+						// write line into feed tmp outfile
+						tmp_outfile.WriteString(line + "\n")
 					}
+					// close tmp outfile
+					tmp_outfile.Close()
 
-					// write line into feed tmp outfile
-					tmp_outfile.WriteString(line + "\n")
+					// save updated rss
+					copyFile(tmp_outfile.Name(), output_path+"feed.rss")
 				}
-				// close tmp outfile
-				tmp_outfile.Close()
-
-				// save updated rss
-				copyFile(tmp_outfile.Name(), output_path+"feed.rss")
 
 			}
 		}
