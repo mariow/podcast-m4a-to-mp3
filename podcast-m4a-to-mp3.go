@@ -103,7 +103,7 @@ func main() {
 
 							// check if file already exists in our output_path
 							// TODO: we should still rewrite the feed, even if the file already exists
-							if !fileExists(outf_name) {
+							if !fileExists(outf_fname) {
 								tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
 								if err != nil {
 									throwerr("error creating tmpfile 3: %v", err)
