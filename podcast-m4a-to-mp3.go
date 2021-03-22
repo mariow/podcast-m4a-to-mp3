@@ -70,7 +70,7 @@ func main() {
 
 				// download feed
 				media_url := ""
-				err = DownloadFile(tmpfile.Name(), url)
+				err = downloadFile(tmpfile.Name(), url)
 				if err != nil {
 					complain("error downloading feed: %v", err)
 				} else {
@@ -111,7 +111,7 @@ func main() {
 								//DEBUG defer os.Remove(tmp_download.Name())
 
 								//download to tmpfile and
-								err = DownloadFile(tmp_download.Name(), media_url)
+								err = downloadFile(tmp_download.Name(), media_url)
 								if err != nil {
 									complain("error downloading media: %v", err)
 								} else {
@@ -177,7 +177,7 @@ func throwerr(msg string, err error) {
 }
 
 // Thanks: https://golangcode.com/download-a-file-from-a-url/
-func DownloadFile(filepath string, url string) error {
+func downloadFile(filepath string, url string) error {
 
 	// Get the data
 	resp, err := http.Get(url)
