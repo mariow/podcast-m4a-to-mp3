@@ -39,25 +39,16 @@ func main() {
 	if output_url == "" {
 		throwerr("No output url defined: %v", err)
 	}
-
-	fmt.Printf("Output path defined: %s\n", output_path) //DEBUG
 	// TODO: validate output path
 
-	// TODO: iterate over all podcast sections
+	// iterate over all podcast sections
 	secs := cfg.SectionStrings()
 	for _, sec := range secs {
-		//fmt.Printf("%s\n", sec) //DEBUG
-
 		if strings.HasPrefix(sec, "podcast ") {
-			fmt.Printf("Is Podcast: ") // DEBUG
-
-			podcast_name := strings.TrimPrefix(sec, "podcast ")
-			fmt.Printf("%s\n", podcast_name) // DEBUG
+			//REMOVEME: podcast_name := strings.TrimPrefix(sec, "podcast ")
 
 			url := cfg.Section(sec).Key("url").String()
 			if url != "" {
-				fmt.Printf("URL is: %s\n", url) // DEBUG
-
 				//TODO: validate URL
 
 				// prepare tmpfile for feed download
@@ -65,93 +56,97 @@ func main() {
 				if err != nil {
 					throwerr("error creating tmpfile: %v", err)
 				}
-				defer os.Remove(tmpfile.Name())                       // clean up later
-				fmt.Printf("we have a tmpfile: %s\n", tmpfile.Name()) //DEBUG
+				defer os.Remove(tmpfile.Name()) // clean up later
 
 				// download feed
 				media_url := ""
 				err = downloadFile(tmpfile.Name(), url)
 				if err != nil {
 					complain("error downloading feed: %v", err)
-				} else {
-					// prepare tmpfile for rewritten feed
-					tmp_outfile, err := ioutil.TempFile("", "pm4a2mp3-new-")
-					if err != nil {
-						throwerr("error creating tmpfile 2: %v", err)
-					}
-					defer os.Remove(tmp_outfile.Name()) // clean up later
+					continue
+				}
+				// prepare tmpfile for rewritten feed
+				tmp_outfile, err := ioutil.TempFile("", "pm4a2mp3-new-")
+				if err != nil {
+					throwerr("error creating tmpfile 2: %v", err)
+				}
+				defer os.Remove(tmp_outfile.Name()) // clean up later
 
-					// compile regexp (TODO: not the best place)
-					r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
+				// compile regexp (TODO: not the best place)
+				r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
 
-					// parse Embedded Media from feed and rewrite
-					s := bufio.NewScanner(tmpfile)
-					for s.Scan() {
-						line := s.Text()
+				// parse Embedded Media from feed and rewrite
+				s := bufio.NewScanner(tmpfile)
+				for s.Scan() {
+					line := s.Text()
 
-						matchs := r.FindStringSubmatch(line)
-						if len(matchs) > 1 {
-							media_url = matchs[1]
+					matchs := r.FindStringSubmatch(line)
+					if len(matchs) > 1 {
+						media_url = matchs[1]
 
-							// md5 sum of the original url is our cache key and name for the new file
-							outf_md5 := md5.Sum([]byte(media_url))
-							outf_name := fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
-							outf_fname := output_path + outf_name
+						// md5 sum of the original url is our cache key and name for the new file
+						outf_md5 := md5.Sum([]byte(media_url))
+						outf_name := fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
+						outf_fname := output_path + outf_name
 
-							// check if file already exists in our output_path
-							if !fileExists(outf_fname) {
-								tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
-								if err != nil {
-									throwerr("error creating tmpfile 3: %v", err)
-								}
-								defer os.Remove(tmp_download.Name())
-
-								//download to tmpfile and
-								err = downloadFile(tmp_download.Name(), media_url)
-								if err != nil {
-									complain("error downloading media: %v", err)
-								} else {
-									defer os.Remove(tmpfile.Name()) //cleanup tmpfile
-									// successful download, let's convert to mp3
-									// ffmpeg -i bits-2021-02-21-3mslDxiZ.m4a -c:a libmp3lame -q:a 4 bits.mp3
-
-									trans := new(transcoder.Transcoder)
-									err := trans.Initialize(tmp_download.Name(), outf_fname)
-									trans.MediaFile().SetSkipVideo(true)
-
-									if err != nil {
-										complain("error transcoding: %v", err)
-									}
-									done := trans.Run(false)
-									err = <-done
-
-									if err != nil {
-										complain("error transcoding 2: %v", err)
-										os.Remove(outf_fname) // cleanup broken output file
-										outf_name = ""        // empty outf_name will keep us from rewriting the output feed
-									}
-								}
+						// check if file already exists in our output_path
+						if !fileExists(outf_fname) {
+							tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
+							if err != nil {
+								throwerr("error creating tmpfile 3: %v", err)
 							}
+							defer os.Remove(tmp_download.Name())
 
-							// rewrite enclosure
-							if outf_name != "" {
-								line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
+							//download to tmpfile and
+							err = downloadFile(tmp_download.Name(), media_url)
+							if err != nil {
+								complain("error downloading media: %v", err)
+							} else {
+								defer os.Remove(tmpfile.Name()) //cleanup tmpfile
+								// successful download, let's convert to mp3
+								// ffmpeg -i bits-2021-02-21-3mslDxiZ.m4a -c:a libmp3lame -q:a 4 bits.mp3
+
+								err := transcodeFile(tmp_download.Name(), outf_name)
+								if err != nil {
+									complain("error transcoding: %v", err)
+									os.Remove(outf_fname) // cleanup broken output file
+									outf_name = ""        // empty outf_name will keep us from rewriting the output feed
+								}
 							}
 						}
 
-						// write line into feed tmp outfile
-						tmp_outfile.WriteString(line + "\n")
+						// rewrite enclosure
+						if outf_name != "" {
+							line = fmt.Sprintf("<enclosure url=\"%s%s\" type=\"audio/mp3\"/>", output_url, outf_name)
+						}
 					}
-					// close tmp outfile
-					tmp_outfile.Close()
 
-					// save updated rss
-					copyFile(tmp_outfile.Name(), output_path+"feed.rss")
+					// write line into feed tmp outfile
+					tmp_outfile.WriteString(line + "\n")
 				}
+				// close tmp outfile
+				tmp_outfile.Close()
+
+				// save updated rss
+				copyFile(tmp_outfile.Name(), output_path+"feed.rss")
 
 			}
 		}
 	}
+}
+
+func transcodeFile(input_file string, output_file string) error {
+	trans := new(transcoder.Transcoder)
+	err := trans.Initialize(input_file, output_file)
+	trans.MediaFile().SetSkipVideo(true)
+
+	if err != nil {
+		return err
+	}
+	done := trans.Run(false)
+	err = <-done
+
+	return err
 }
 
 // Complain about an error, don't fail
