@@ -2,10 +2,11 @@
 
 ## TODO
 
-- [ ] subscribe to feed
-- [ ] parse all enclosure urls
-- [ ] build database of urls
-- [ ] convert everything m4a to mp3
-- [ ] edit feed to point to new mp3 files
+- [x] subscribe to feed
+- [x] parse all enclosure urls
+- [x] build database of urls
+- [x] convert everything m4a to mp3
+- [x] edit feed to point to new mp3 files
+- [ ] make feed name configurable and produce one feed per podcast
 - [ ] remove outdated mp3 files
 
