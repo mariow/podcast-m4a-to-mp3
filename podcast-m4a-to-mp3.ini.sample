@@ -1,1 +1,7 @@
-# empty ini sample, will fill later
+[default]
+output_path = "/path/for/output/files/"
+output_url = "https://url.that.points/to-the/files-above"
+
+
+[podcast dummy]
+url="https://original.podcasturl/feed.rss"
