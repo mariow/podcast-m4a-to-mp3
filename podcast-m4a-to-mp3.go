@@ -65,7 +65,7 @@ func main() {
 				if err != nil {
 					throwerr("error creating tmpfile: %v", err)
 				}
-				//TODO  defer os.Remove(tmpfile.Name()) // clean up later
+				defer os.Remove(tmpfile.Name())                       // clean up later
 				fmt.Printf("we have a tmpfile: %s\n", tmpfile.Name()) //DEBUG
 
 				// download feed
@@ -79,7 +79,7 @@ func main() {
 					if err != nil {
 						throwerr("error creating tmpfile 2: %v", err)
 					}
-					//TODO  defer os.Remove(tmp_outfile.Name()) // clean up later
+					defer os.Remove(tmp_outfile.Name()) // clean up later
 
 					// compile regexp (TODO: not the best place)
 					r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
@@ -88,38 +88,33 @@ func main() {
 					s := bufio.NewScanner(tmpfile)
 					for s.Scan() {
 						line := s.Text()
-						//fmt.Println(line) //DEBUG
+
 						matchs := r.FindStringSubmatch(line)
 						if len(matchs) > 1 {
-							fmt.Println(matchs[1]) //DEBUG
 							media_url = matchs[1]
 
-							// TODO BROKEN
+							// md5 sum of the original url is our cache key and name for the new file
 							outf_md5 := md5.Sum([]byte(media_url))
-							fmt.Printf("md5 is: %x\n", outf_md5) //DEBUG
 							outf_name := fmt.Sprintf("%x", string(outf_md5[:])) + ".mp3"
 							outf_fname := output_path + outf_name
-							fmt.Printf("outf is: %s\n", outf_name) //DEBUG
 
 							// check if file already exists in our output_path
-							// TODO: we should still rewrite the feed, even if the file already exists
 							if !fileExists(outf_fname) {
 								tmp_download, err := ioutil.TempFile("", "pm4a2mp3-download-")
 								if err != nil {
 									throwerr("error creating tmpfile 3: %v", err)
 								}
-								//DEBUG defer os.Remove(tmp_download.Name())
+								defer os.Remove(tmp_download.Name())
 
 								//download to tmpfile and
 								err = downloadFile(tmp_download.Name(), media_url)
 								if err != nil {
 									complain("error downloading media: %v", err)
 								} else {
-									//DEBUG defer os.Remove(tmpfile.Name()) //cleanup tmpfile
+									defer os.Remove(tmpfile.Name()) //cleanup tmpfile
 									// successful download, let's convert to mp3
 									// ffmpeg -i bits-2021-02-21-3mslDxiZ.m4a -c:a libmp3lame -q:a 4 bits.mp3
 
-									fmt.Println("Download done, starting transcoding") //DEBUG
 									trans := new(transcoder.Transcoder)
 									err := trans.Initialize(tmp_download.Name(), outf_fname)
 									trans.MediaFile().SetSkipVideo(true)
@@ -136,9 +131,7 @@ func main() {
 										outf_name = ""        // empty outf_name will keep us from rewriting the output feed
 									}
 								}
-							} else { //DEBUG
-								fmt.Println("outf already exists") // DEBUG
-							} //DEBUG
+							}
 
 							// rewrite enclosure
 							if outf_name != "" {
@@ -159,10 +152,6 @@ func main() {
 			}
 		}
 	}
-
-	//	keys := cfg.Section(sec).KeyStrings()
-	//	for _, key := range keys {
-	//		fmt.Printf("%s=%s\n", key, cfg.Section(sec).Key(key).String())
 }
 
 // Complain about an error, don't fail
