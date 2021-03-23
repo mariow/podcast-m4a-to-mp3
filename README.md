@@ -47,7 +47,7 @@ This would:
 - [x] build database of urls
 - [x] convert everything m4a to mp3
 - [x] edit feed to point to new mp3 files
-- ~~[ ] make feed name configurable and produce one feed per podcast~~
+~~[ ] make feed name configurable and produce one feed per podcast~~
 - [ ] Lockfile
 - [ ] remove outdated mp3 files
 - [ ] Checks. Safeguards. Seatbelts. 
