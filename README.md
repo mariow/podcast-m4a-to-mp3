@@ -18,9 +18,10 @@ Podcasts, I spent way too much time on them. And sometimes I'm happy to skip par
 1. `go fetch`
 2. `go build podcast-m4a-to-mp3.go`
 3. copy the sample .ini to podcast-m4a-to-mp3.ini in the same directory that the script will be run from
-4. add the subscriptions you need 
-5. set up a cronjob to run
-6. Subscribe to the new feed
+4. set up a directory to server the rewritten feed and re-encoded files from (keep in mind that you might want to add some http auth or other protection in case you are working with paid podcast subscriptions)
+5. add the subscriptions you need 
+6. set up a cronjob to run
+7. Subscribe to the new feed
 
 ### .ini documentation and example
 
