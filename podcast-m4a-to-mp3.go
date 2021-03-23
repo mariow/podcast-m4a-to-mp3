@@ -73,14 +73,24 @@ func main() {
 				defer os.Remove(tmp_outfile.Name()) // clean up later
 
 				// compile regexp (TODO: not the best place)
-				r, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
+				r_enclosure, _ := regexp.Compile("<enclosure[^>]+url=\"([^\"]+m4a)\"")
+				r_title, _ := regexp.Compile("<title>([^<]+)<")
 
 				// parse Embedded Media from feed and rewrite
 				s := bufio.NewScanner(tmpfile)
+				title_rewritten := false // have we rewritten the title?
 				for s.Scan() {
 					line := s.Text()
 
-					matchs := r.FindStringSubmatch(line)
+					if !title_rewritten {
+						match_title := r_title.FindStringSubmatch(line)
+						if len(match_title) > 1 { // we have found the title}
+							line = r_title.ReplaceAllString(line, "<title>"+match_title[1]+" - Chapters!<")
+							title_rewritten = true
+						}
+					}
+
+					matchs := r_enclosure.FindStringSubmatch(line)
 					if len(matchs) > 1 {
 						media_url = matchs[1]
 
