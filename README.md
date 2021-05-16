@@ -2,7 +2,7 @@
 
 ## Why, oh, why?
 
-Podcasts, I spent way too much time on them. And sometimes I'm happy to skip parts of them. Luckily chapter support has made it's way into most podcast players. Unfortunately I find that there are several podcasts I like a lot but that only publish M4A files and it seems that M4A chapters are not supported on Android. To me it seems more than reasonable to set up a script on on old dedicated server to re-encode all of those podcasts to MP3 so that my player correctly displays the chapters. If you think this is ridiculous your are probably right, please move along, nothing to see here.
+Podcasts, I spent way too much time on them. And sometimes I'm happy to skip parts of them. Luckily chapter support has made it's way into most podcast players. Unfortunately I find that there are several podcasts I like a lot but that only publish M4A files and it seems that M4A chapters are not supported on Android. To me it seems more than reasonable to set up a script on on old dedicated server to re-encode all of those podcasts to MP3 so that my player correctly displays the chapters. If you think this is ridiculous you are probably right, please move along, nothing to see here.
 
 ## HOWTO
 
@@ -55,4 +55,4 @@ This would:
 
 ## DISCLAIMER
 
-It's not beautful. The name is horrible. The code ... well. It doesn't have enough checks against destroying things. But it servers my purpose. Use with care. I'm happy to accept pull requests for improvements though, it should be easy enough to improve this.
+It's not beautful. The name is horrible. The code ... well. It doesn't have enough checks against destroying things. But it serves my purpose. Use with care. I'm happy to accept pull requests for improvements though, it should be easy enough to improve this.
