@@ -1,9 +1,8 @@
 module witte.io/podcast-m4a-to-mp3
 
-go 1.16
+go 1.19
 
 require (
-	github.com/smartystreets/goconvey v1.6.4 // indirect
-	github.com/xfrr/goffmpeg v0.0.0-20200825100927-5550d238df5c
-	gopkg.in/ini.v1 v1.62.0
+	github.com/xfrr/goffmpeg v0.0.0-20210624103149-5ca2d3062daf
+	gopkg.in/ini.v1 v1.67.0
 )
