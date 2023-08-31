@@ -1,4 +1,4 @@
-module github.com/correctusername/podcast-m4a-to-mp3
+module github.com/mariow/podcast-m4a-to-mp3
 
 go 1.19
 
